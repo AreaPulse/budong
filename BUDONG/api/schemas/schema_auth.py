@@ -27,6 +27,16 @@ class Token(BaseModel):
     token_type: str = Field(..., description="토큰 타입")
 
 
+class TokenWithRefresh(BaseModel):
+    access_token: str = Field(..., description="액세스 토큰")
+    refresh_token: str = Field(..., description="리프레시 토큰")
+    token_type: str = Field(default="bearer", description="토큰 타입")
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str = Field(..., description="리프레시 토큰")
+
+
 class UserResponse(BaseModel):
     user_id: int = Field(..., description="사용자 ID")  
     email: str = Field(..., description="사용자 이메일")
