@@ -27,3 +27,5 @@ class SavedBuilding(BaseModel):
 class SavedBuildingsResponse(BaseModel):
     saved_buildings: list[SavedBuilding]
     total_count: int
+class DeleteBuildingRequest(BaseModel):
+    save_id: int
