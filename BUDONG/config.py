@@ -4,11 +4,11 @@ from typing import Optional
 
 class Settings(BaseSettings):
     # Database
-    MYSQL_HOST: str = "localhost"
+    MYSQL_HOST: str = "3.35.232.62"
     MYSQL_PORT: int = 3306
-    MYSQL_USER: str = "budonguser"
-    MYSQL_PASSWORD: str = "budongpassword"
-    MYSQL_DATABASE: str = "budong"
+    MYSQL_USER: str = "root"
+    MYSQL_PASSWORD: str = "qwjdwioqjdwqioqwd"
+    MYSQL_DATABASE: str = "areapulsedb"
     
     # Database URL (for SQLAlchemy)
     DATABASE_URL: Optional[str] = None
