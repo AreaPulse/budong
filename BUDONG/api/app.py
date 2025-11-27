@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from BUDONG.api.routers.v1 import api
 from BUDONG.config import settings
 from BUDONG.api.core.database import check_and_create_tables
+from BUDONG.api.exception.global_exception_handler import register_exception_handlers
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -63,7 +64,7 @@ app.add_middleware(
 
 # API 라우터 등록
 app.include_router(api.router, prefix=settings.API_V1_PREFIX)
-
+register_exception_handlers(app)
 
 @app.get("/")
 async def root():
