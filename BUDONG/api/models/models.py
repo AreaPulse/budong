@@ -6,229 +6,195 @@ from BUDONG.api.models.enums.infra_category import InfraCategory
 from BUDONG.api.models.enums.stats_type import StatsType
 from BUDONG.api.models.enums.station_type import StationType
 from BUDONG.api.models.enums.user_role import UserRole
+from sqlalchemy import (
+    Column, Integer, BigInteger, String, Text, Float, DateTime, 
+    ForeignKey, UniqueConstraint, func
+)
+from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
+from typing import List, Optional
+from datetime import datetime
 
+class Base(DeclarativeBase):
+    pass
 
-# --------------------------------------
-# 1. 사용자 및 활동 테이블
-# --------------------------------------
+# ------------------------------------------------------------------
+# 1. 사용자 및 활동 테이블 (User & Activity)
+# ------------------------------------------------------------------
 
-class TUser(Base):
+class User(Base):
     __tablename__ = "t_user"
-    
-    user_id = Column(Integer, primary_key=True, autoincrement=True, comment="회원 ID")
+
+    user_id = Column(Integer, primary_key=True, autoincrement=True, comment='회원 ID')
     email = Column(String(100), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     nickname = Column(String(50), nullable=False)
-    role = Column(String(20), nullable=False, default=UserRole.USER.value, comment="사용자 역할: user, admin")
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    
-    # Relationships
-    reviews = relationship("TBuildingReview", back_populates="user")
-    saved_buildings = relationship("TUserSavedBuilding", back_populates="user")
+    created_at = Column(DateTime, nullable=False, default=func.now())
+
+    # 관계 설정 (User -> Reviews, Saved)
+    reviews = relationship("BuildingReview", back_populates="user", cascade="all, delete-orphan")
+    saved_buildings = relationship("UserSavedBuilding", back_populates="user", cascade="all, delete-orphan")
 
 
-class TBuildingReview(Base):
+class BuildingReview(Base):
     __tablename__ = "t_building_review"
+
+    review_id = Column(Integer, primary_key=True, autoincrement=True, comment='리뷰 ID')
+    user_id = Column(Integer, ForeignKey("t_user.user_id"), nullable=False, comment='작성자 ID')
     
-    review_id = Column(Integer, primary_key=True, autoincrement=True, comment="리뷰 ID")
-    user_id = Column(Integer, ForeignKey("t_user.user_id"), nullable=False, comment="작성자 ID")
-    building_id = Column(Integer, ForeignKey("t_building.building_id"), nullable=False, comment="건물 ID")
-    rating = Column(Integer, nullable=False, comment="평점 (1~5)")
+    # [주의] t_building의 PK는 BigInteger입니다. FK도 반드시 BigInteger여야 합니다. (DBML의 INT 수정됨)
+    building_id = Column(BigInteger, ForeignKey("t_building.building_id"), nullable=False, comment='건물 ID')
+    
+    rating = Column(Integer, nullable=False, comment='평점 (1~5)')
     content = Column(Text)
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    
-    # Relationships
-    user = relationship("TUser", back_populates="reviews")
-    building = relationship("TBuilding", back_populates="reviews")
-    
-    # Indexes
-    __table_args__ = (
-        Index("idx_review_user_id", "user_id"),
-        Index("idx_review_building_id", "building_id"),
-    )
+    created_at = Column(DateTime, nullable=False, default=func.now())
+
+    # 관계 설정
+    user = relationship("User", back_populates="reviews")
+    building = relationship("Building", back_populates="reviews")
 
 
-class TUserSavedBuilding(Base):
+class UserSavedBuilding(Base):
     __tablename__ = "t_user_saved_building"
-    
-    save_id = Column(Integer, primary_key=True, autoincrement=True, comment="찜 ID")
-    user_id = Column(Integer, ForeignKey("t_user.user_id"), nullable=False, comment="회원 ID")
-    building_id = Column(Integer, ForeignKey("t_building.building_id"), nullable=False, comment="건물 ID")
-    memo = Column(String(255), comment="간단 메모")
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    
-    # Relationships
-    user = relationship("TUser", back_populates="saved_buildings")
-    building = relationship("TBuilding", back_populates="saved_by_users")
-    
-    # Indexes - 한 유저가 한 건물을 중복 찜 방지
     __table_args__ = (
-        UniqueConstraint("user_id", "building_id", name="uq_user_building"),
-        Index("idx_saved_user_id", "user_id"),
-        Index("idx_saved_building_id", "building_id"),
+        UniqueConstraint('user_id', 'building_id', name='uq_user_building_save'),
     )
 
+    save_id = Column(Integer, primary_key=True, autoincrement=True, comment='찜 ID')
+    user_id = Column(Integer, ForeignKey("t_user.user_id"), nullable=False, comment='회원 ID')
+    
+    # [주의] t_building의 PK는 BigInteger입니다. FK도 BigInteger로 맞춰야 합니다.
+    building_id = Column(BigInteger, ForeignKey("t_building.building_id"), nullable=False, comment='건물 ID')
+    
+    memo = Column(String(255), comment='간단 메모')
+    created_at = Column(DateTime, nullable=False, default=func.now())
 
-# --------------------------------------
-# 2. 부동산 및 인프라 (Point 데이터)
-# --------------------------------------
+    # 관계 설정
+    user = relationship("User", back_populates="saved_buildings")
+    building = relationship("Building", back_populates="saved_by_users")
 
-class TBuilding(Base):
+
+# ------------------------------------------------------------------
+# 2. 공공데이터 테이블 (Public Data Tables) - 관계 추가됨
+# ------------------------------------------------------------------
+
+class Building(Base):
     __tablename__ = "t_building"
-    
-    building_id = Column(Integer, primary_key=True, autoincrement=True, comment="건물 ID")
-    bjd_code = Column(String(10), ForeignKey("t_region.bjd_code"), nullable=False, comment="법정동 코드")
-    address = Column(String(255), comment="도로명주소")
-    building_name = Column(String(100), comment="예: 래미안아파트")
-    building_type = Column(String(50), comment="예: 아파트, 오피스텔")
-    build_year = Column(Integer, comment="준공연도")
-    total_units = Column(Integer, comment="총 세대수")
-    # MySQL Spatial: GEOMETRY 타입 사용 (실제 DB에서는 GEOMETRY로 생성)
-    # SQLAlchemy에서는 Text로 저장하고, 애플리케이션에서 WKT 형식으로 처리
-    location = Column(Text, nullable=False, comment="Spatial POINT Type (WKT 형식: POINT(lon lat))")
-    
-    # Relationships
-    region = relationship("TRegion", back_populates="buildings")
-    reviews = relationship("TBuildingReview", back_populates="building")
-    saved_by_users = relationship("TUserSavedBuilding", back_populates="building")
-    transactions = relationship("TRealEstateTransaction", back_populates="building")
-    
-    # Indexes
-    __table_args__ = (
-        Index("idx_building_bjd_code", "bjd_code"),
-    )
+
+    # 원본 덤프가 BigInt이므로 여기서도 BigInteger 유지
+    building_id = Column(BigInteger, primary_key=True, index=True, comment="건물 ID")
+    bjd_code = Column(BigInteger, ForeignKey("t_bjd_table.bjd_code"), index=True) 
+    address = Column(Text)
+    building_name = Column(Text)
+    building_type = Column(Text)
+    build_year = Column(Text)
+    total_units = Column(Text)
+    location = Column(Text)
+    lon = Column(Float)
+    lat = Column(Float)
+
+    # 관계 설정 (역방향)
+    reviews = relationship("BuildingReview", back_populates="building")
+    saved_by_users = relationship("UserSavedBuilding", back_populates="building")
+    real_transactions = relationship("RealTransactionPrice", back_populates="building")
+    bjd = relationship("BjdTable", back_populates="buildings")
 
 
-class TRealEstateTransaction(Base):
-    __tablename__ = "t_real_estate_transaction"
-    
-    tx_id = Column(Integer, primary_key=True, autoincrement=True, comment="거래 ID")
-    building_id = Column(Integer, ForeignKey("t_building.building_id"), nullable=False, comment="건물 ID")
-    transaction_date = Column(Date, nullable=False)
-    price = Column(BIGINT, nullable=False, comment="거래금액 (만원단위)")
-    area_sqm = Column(DECIMAL(10, 2), nullable=False, comment="전용면적 ㎡")
-    floor = Column(Integer)
-    
-    # Relationships
-    building = relationship("TBuilding", back_populates="transactions")
-    
-    # Indexes
-    __table_args__ = (
-        Index("idx_tx_building_id", "building_id"),
-        Index("idx_tx_date", "transaction_date"),
-    )
+class BjdTable(Base):
+    __tablename__ = "t_bjd_table"
+
+    bjd_code = Column(BigInteger, primary_key=True, index=True)
+    bjd_name = Column(Text)
+    bjd_eng = Column(Text)
+
+    # 관계 설정
+    buildings = relationship("Building", back_populates="bjd")
+    jcg_mappings = relationship("JcgBjdTable", back_populates="bjd")
 
 
-class TInfrastructure(Base):
-    __tablename__ = "t_infrastructure"
-    
-    infra_id = Column(Integer, primary_key=True, autoincrement=True, comment="인프라 ID")
-    infra_category = Column(String(20), nullable=False, comment="Enum: school, park, subway_station, bus_stop, hospital, mart, bank, public_office, cctv")
-    name = Column(String(100), nullable=False)
-    address = Column(String(255))
-    # MySQL Spatial: GEOMETRY 타입 사용
-    location = Column(Text, nullable=False, comment="Spatial POINT Type (WKT 형식: POINT(lon lat))")
-    
-    # Relationships
-    school_detail = relationship("TSchoolDetail", back_populates="infrastructure", uselist=False)
-    park_detail = relationship("TParkDetail", back_populates="infrastructure", uselist=False)
-    
-    # Indexes
-    __table_args__ = (
-        Index("idx_infra_category", "infra_category"),
-    )
+class RealTransactionPrice(Base):
+    __tablename__ = "t_real_transaction_price"
+
+    tx_id = Column(BigInteger, primary_key=True, index=True)
+    building_id = Column(BigInteger, ForeignKey("t_building.building_id"), index=True)
+    transaction_date = Column(Text)
+    price = Column(BigInteger)
+    area_sqm = Column(Float)
+    floor = Column(Float)
+
+    # 관계 설정
+    building = relationship("Building", back_populates="real_transactions")
 
 
-class TSchoolDetail(Base):
-    __tablename__ = "t_school_detail"
-    
-    infra_id = Column(Integer, ForeignKey("t_infrastructure.infra_id"), primary_key=True, comment="인프라 ID (T_INFRA PK와 동일)")
-    school_type = Column(String(20), comment="예: 초, 중, 고, 특수")
-    assigned_district = Column(Text, comment="초등학교 통학구역 정보")
-    
-    # Relationships
-    infrastructure = relationship("TInfrastructure", back_populates="school_detail")
+class JcgBjdTable(Base):
+    __tablename__ = "t_jcg_bjd_table"
+
+    region_name_full = Column(Text)
+    ja_chi_gu_code = Column(BigInteger, primary_key=True) # 복합키 중 하나라고 가정
+    bjd_code = Column(BigInteger, ForeignKey("t_bjd_table.bjd_code"), primary_key=True) # 복합키
+
+    # 관계 설정
+    bjd = relationship("BjdTable", back_populates="jcg_mappings")
 
 
-class TParkDetail(Base):
-    __tablename__ = "t_park_detail"
-    
-    infra_id = Column(Integer, ForeignKey("t_infrastructure.infra_id"), primary_key=True, comment="인프라 ID (T_INFRA PK와 동일)")
-    park_type = Column(String(50), comment="예: 근린공원, 어린이공원")
-    area_sqm = Column(DECIMAL(10, 2), comment="공원 면적")
-    
-    # Relationships
-    infrastructure = relationship("TInfrastructure", back_populates="park_detail")
+# ------------------------------------------------------------------
+# 3. 기타 통계/정보 테이블 (관게가 명확치 않아 독립적으로 유지)
+# ------------------------------------------------------------------
 
+class CrimeCCTV(Base):
+    __tablename__ = "t_crime_CCTV"
+    jcg_name = Column(Text, primary_key=True)
+    crime_num = Column(BigInteger)
+    cctv_num = Column(BigInteger)
+    dangerous_rating = Column(BigInteger)
+    CCTV_security_rating = Column(BigInteger)
 
-# --------------------------------------
-# 3. 지역 기반 (Polygon 데이터)
-# --------------------------------------
+class Noise(Base):
+    __tablename__ = "t_noise"
+    address = Column(Text, primary_key=True) # 임시 PK
+    noise_max = Column(BigInteger)
+    noise_avg = Column(BigInteger)
+    noise_min = Column(BigInteger)
+    lat = Column(Float)
+    lon = Column(Float)
 
-class TRegion(Base):
-    __tablename__ = "t_region"
-    
-    bjd_code = Column(String(10), primary_key=True, comment="법정동 코드")
-    region_name_full = Column(String(100), comment="예: 서울특별시 강남구 역삼동")
-    # MySQL Spatial: GEOMETRY 타입 사용
-    region_polygon = Column(Text, nullable=False, comment="Spatial POLYGON Type (WKT 형식)")
-    
-    # Relationships
-    buildings = relationship("TBuilding", back_populates="region")
-    stats = relationship("TRegionStats", back_populates="region")
+class Park(Base):
+    __tablename__ = "t_park"
+    park_name = Column(Text, primary_key=True)
+    park_introduce = Column(Text)
+    park_size = Column(Text)
+    region = Column(Text)
+    address = Column(Text)
+    management = Column(Text)
+    lon = Column(Float)
+    lat = Column(Float)
 
+class PoliceStationInfo(Base):
+    __tablename__ = "t_police_station_info"
+    polic_station_name = Column(Text, primary_key=True)
+    address = Column(Text)
+    bjd_name = Column(Text)
 
-class TRegionStats(Base):
-    __tablename__ = "t_region_stats"
-    
-    stats_id = Column(Integer, primary_key=True, autoincrement=True)
-    bjd_code = Column(String(10), ForeignKey("t_region.bjd_code"), nullable=False, comment="법정동 코드")
-    stats_year = Column(Integer, nullable=False)
-    stats_type = Column(String(30), nullable=False, comment="Enum: crime_total, crime_theft, noise_day, noise_night")
-    stats_value = Column(DECIMAL(10, 2), comment="통계 값")
-    
-    # Relationships
-    region = relationship("TRegion", back_populates="stats")
-    
-    # Indexes - 특정 년도, 특정 타입의 통계는 지역별로 하나
-    __table_args__ = (
-        UniqueConstraint("bjd_code", "stats_year", "stats_type", name="uq_region_stats"),
-        Index("idx_stats_bjd_code", "bjd_code"),
-    )
+class PublicTransportByAdminDong(Base):
+    __tablename__ = "t_public_transport_by_admin_dong"
+    hjd_id = Column(BigInteger, primary_key=True, index=True)
+    passenger_num = Column(BigInteger)
+    complexity_rating = Column(BigInteger)
 
+class School(Base):
+    __tablename__ = "t_school"
+    school_name = Column(Text, primary_key=True)
+    build_year = Column(BigInteger)
+    ja_chi_gu = Column(Text)
+    school_level = Column(Text)
+    category = Column(Text)
+    address = Column(Text)
+    lon = Column(Float)
+    lat = Column(Float)
 
-class TEnvironmentStation(Base):
-    __tablename__ = "t_environment_station"
-    
-    station_id = Column(Integer, primary_key=True, autoincrement=True, comment="측정소 ID")
-    station_type = Column(String(20), nullable=False, comment="Enum: air_quality, noise")
-    station_name = Column(String(100))
-    # MySQL Spatial: GEOMETRY 타입 사용
-    location = Column(Text, nullable=False, comment="Spatial POINT Type (WKT 형식: POINT(lon lat))")
-    
-    # Relationships
-    environment_data = relationship("TEnvironmentData", back_populates="station")
-    
-    # Indexes
-    __table_args__ = (
-        Index("idx_station_type", "station_type"),
-    )
-
-
-class TEnvironmentData(Base):
-    __tablename__ = "t_environment_data"
-    
-    data_id = Column(Integer, primary_key=True, autoincrement=True)
-    station_id = Column(Integer, ForeignKey("t_environment_station.station_id"), nullable=False, comment="측정소 ID")
-    measurement_time = Column(DateTime, nullable=False)
-    pm10_value = Column(Integer, comment="미세먼지")
-    pm2_5_value = Column(Integer, comment="초미세먼지")
-    noise_db = Column(DECIMAL(5, 1), comment="소음")
-    
-    # Relationships
-    station = relationship("TEnvironmentStation", back_populates="environment_data")
-    
-    # Indexes
-    __table_args__ = (
-        Index("idx_env_station_time", "station_id", "measurement_time"),
-    )
+class Station(Base):
+    __tablename__ = "t_station"
+    station_id = Column(BigInteger, primary_key=True, index=True)
+    line = Column(BigInteger)
+    station_name = Column(Text)
+    lat = Column(Float)
+    lon = Column(Float)
