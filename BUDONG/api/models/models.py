@@ -1,200 +1,408 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, DECIMAL, BIGINT, Date, ForeignKey, Index, UniqueConstraint
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-from BUDONG.api.core.database import Base
-from BUDONG.api.models.enums.infra_category import InfraCategory
-from BUDONG.api.models.enums.stats_type import StatsType
-from BUDONG.api.models.enums.station_type import StationType
-from BUDONG.api.models.enums.user_role import UserRole
-from sqlalchemy import (
-    Column, Integer, BigInteger, String, Text, Float, DateTime, 
-    ForeignKey, UniqueConstraint, func
-)
-from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
-from typing import List, Optional
+"""
+SQLAlchemy ORM Models for AreaPulse DB
+Database: areapulsedb (MySQL 8.0)
+"""
+
 from datetime import datetime
+from typing import Optional
+from sqlalchemy import (
+    BigInteger, Integer, String, Text, Float, DateTime, 
+    SmallInteger, ForeignKey, Index, UniqueConstraint
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
 
 class Base(DeclarativeBase):
+    """Base class for all models"""
     pass
 
-# ------------------------------------------------------------------
-# 1. 사용자 및 활동 테이블 (User & Activity)
-# ------------------------------------------------------------------
+
+# =====================================================
+# 1. 사용자 및 활동 테이블
+# =====================================================
 
 class User(Base):
     __tablename__ = "t_user"
+    __table_args__ = {"comment": "사용자 계정 정보"}
 
-    user_id = Column(Integer, primary_key=True, autoincrement=True, comment='회원 ID')
-    email = Column(String(100), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    nickname = Column(String(50), nullable=False)
-    created_at = Column(DateTime, nullable=False, default=func.now())
+    user_id: Mapped[int] = mapped_column(
+        Integer, 
+        primary_key=True, 
+        autoincrement=True,
+        comment="회원 ID"
+    )
+    email: Mapped[str] = mapped_column(
+        String(100), 
+        unique=True, 
+        nullable=False
+    )
+    password_hash: Mapped[str] = mapped_column(
+        String(255), 
+        nullable=False
+    )
+    nickname: Mapped[str] = mapped_column(
+        String(50), 
+        nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, 
+        nullable=False, 
+        default=datetime.now
+    )
 
-    # 관계 설정 (User -> Reviews, Saved)
-    reviews = relationship("BuildingReview", back_populates="user", cascade="all, delete-orphan")
-    saved_buildings = relationship("UserSavedBuilding", back_populates="user", cascade="all, delete-orphan")
+    # Relationships
+    reviews: Mapped[list["BuildingReview"]] = relationship(
+        back_populates="user", 
+        cascade="all, delete-orphan"
+    )
+    saved_buildings: Mapped[list["UserSavedBuilding"]] = relationship(
+        back_populates="user", 
+        cascade="all, delete-orphan"
+    )
 
 
 class BuildingReview(Base):
     __tablename__ = "t_building_review"
+    __table_args__ = (
+        Index("idx_user_id", "user_id"),
+        Index("idx_building_id", "building_id"),
+        {"comment": "건물 리뷰 정보"}
+    )
 
-    review_id = Column(Integer, primary_key=True, autoincrement=True, comment='리뷰 ID')
-    user_id = Column(Integer, ForeignKey("t_user.user_id"), nullable=False, comment='작성자 ID')
-    
-    # [주의] t_building의 PK는 BigInteger입니다. FK도 반드시 BigInteger여야 합니다. (DBML의 INT 수정됨)
-    building_id = Column(BigInteger, ForeignKey("t_building.building_id"), nullable=False, comment='건물 ID')
-    
-    rating = Column(Integer, nullable=False, comment='평점 (1~5)')
-    content = Column(Text)
-    created_at = Column(DateTime, nullable=False, default=func.now())
+    review_id: Mapped[int] = mapped_column(
+        Integer, 
+        primary_key=True, 
+        autoincrement=True,
+        comment="리뷰 ID"
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("t_user.user_id", ondelete="CASCADE"),
+        nullable=False,
+        comment="작성자 ID"
+    )
+    building_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("t_building.building_id", ondelete="CASCADE"),
+        nullable=False,
+        comment="건물 ID"
+    )
+    rating: Mapped[int] = mapped_column(
+        SmallInteger,
+        nullable=False,
+        comment="평점 (1~5)"
+    )
+    content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.now
+    )
 
-    # 관계 설정
-    user = relationship("User", back_populates="reviews")
-    building = relationship("Building", back_populates="reviews")
+    # Relationships
+    user: Mapped["User"] = relationship(back_populates="reviews")
+    building: Mapped["Building"] = relationship(back_populates="reviews")
 
 
 class UserSavedBuilding(Base):
     __tablename__ = "t_user_saved_building"
     __table_args__ = (
-        UniqueConstraint('user_id', 'building_id', name='uq_user_building_save'),
+        UniqueConstraint("user_id", "building_id", name="uk_user_building"),
+        {"comment": "사용자 찜 목록"}
     )
 
-    save_id = Column(Integer, primary_key=True, autoincrement=True, comment='찜 ID')
-    user_id = Column(Integer, ForeignKey("t_user.user_id"), nullable=False, comment='회원 ID')
-    
-    # [주의] t_building의 PK는 BigInteger입니다. FK도 BigInteger로 맞춰야 합니다.
-    building_id = Column(BigInteger, ForeignKey("t_building.building_id"), nullable=False, comment='건물 ID')
-    
-    memo = Column(String(255), comment='간단 메모')
-    created_at = Column(DateTime, nullable=False, default=func.now())
+    save_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+        comment="찜 ID"
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("t_user.user_id", ondelete="CASCADE"),
+        nullable=False,
+        comment="회원 ID"
+    )
+    building_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("t_building.building_id", ondelete="CASCADE"),
+        nullable=False,
+        comment="건물 ID"
+    )
+    memo: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="간단 메모"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=datetime.now
+    )
 
-    # 관계 설정
-    user = relationship("User", back_populates="saved_buildings")
-    building = relationship("Building", back_populates="saved_by_users")
+    # Relationships
+    user: Mapped["User"] = relationship(back_populates="saved_buildings")
+    building: Mapped["Building"] = relationship(back_populates="saved_by_users")
 
 
-# ------------------------------------------------------------------
-# 2. 공공데이터 테이블 (Public Data Tables) - 관계 추가됨
-# ------------------------------------------------------------------
-
-class Building(Base):
-    __tablename__ = "t_building"
-
-    # 원본 덤프가 BigInt이므로 여기서도 BigInteger 유지
-    building_id = Column(BigInteger, primary_key=True, index=True, comment="건물 ID")
-    bjd_code = Column(BigInteger, ForeignKey("t_bjd_table.bjd_code"), index=True) 
-    address = Column(Text)
-    building_name = Column(Text)
-    building_type = Column(Text)
-    build_year = Column(Text)
-    total_units = Column(Text)
-    location = Column(Text)
-    lon = Column(Float)
-    lat = Column(Float)
-
-    # 관계 설정 (역방향)
-    reviews = relationship("BuildingReview", back_populates="building")
-    saved_by_users = relationship("UserSavedBuilding", back_populates="building")
-    real_transactions = relationship("RealTransactionPrice", back_populates="building")
-    bjd = relationship("BjdTable", back_populates="buildings")
-
+# =====================================================
+# 2. 지역 및 건물 테이블
+# =====================================================
 
 class BjdTable(Base):
     __tablename__ = "t_bjd_table"
 
-    bjd_code = Column(BigInteger, primary_key=True, index=True)
-    bjd_name = Column(Text)
-    bjd_eng = Column(Text)
+    bjd_code: Mapped[int] = mapped_column(
+        BigInteger,
+        primary_key=True,
+        comment="법정동 코드"
+    )
+    bjd_name: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    bjd_eng: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    # 관계 설정
-    buildings = relationship("Building", back_populates="bjd")
-    jcg_mappings = relationship("JcgBjdTable", back_populates="bjd")
+    # Relationships
+    buildings: Mapped[list["Building"]] = relationship(back_populates="bjd")
+    jcg_mappings: Mapped[list["JcgBjdTable"]] = relationship(back_populates="bjd")
 
+
+class Building(Base):
+    __tablename__ = "t_building"
+    __table_args__ = (
+        Index("idx_bjd_code", "bjd_code"),
+    )
+
+    building_id: Mapped[int] = mapped_column(
+        BigInteger,
+        primary_key=True,
+        comment="건물 ID"
+    )
+    bjd_code: Mapped[Optional[int]] = mapped_column(
+        BigInteger,
+        ForeignKey("t_bjd_table.bjd_code", ondelete="SET NULL"),
+        nullable=True,
+        comment="법정동 코드"
+    )
+    address: Mapped[str] = mapped_column(Text, nullable=False)
+    building_name: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    building_type: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    build_year: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    total_units: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    location: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    lon: Mapped[float] = mapped_column(Float, nullable=False)
+    lat: Mapped[float] = mapped_column(Float, nullable=False)
+
+    # Relationships
+    bjd: Mapped[Optional["BjdTable"]] = relationship(back_populates="buildings")
+    reviews: Mapped[list["BuildingReview"]] = relationship(
+        back_populates="building",
+        cascade="all, delete-orphan"
+    )
+    saved_by_users: Mapped[list["UserSavedBuilding"]] = relationship(
+        back_populates="building",
+        cascade="all, delete-orphan"
+    )
+    transactions: Mapped[list["RealTransactionPrice"]] = relationship(
+        back_populates="building",
+        cascade="all, delete-orphan"
+    )
+
+
+# =====================================================
+# 3. 거래 정보 테이블
+# =====================================================
 
 class RealTransactionPrice(Base):
     __tablename__ = "t_real_transaction_price"
+    __table_args__ = (
+        Index("idx_building_id", "building_id"),
+        Index("idx_transaction_date", "transaction_date"),
+    )
 
-    tx_id = Column(BigInteger, primary_key=True, index=True)
-    building_id = Column(BigInteger, ForeignKey("t_building.building_id"), index=True)
-    transaction_date = Column(Text)
-    price = Column(BigInteger)
-    area_sqm = Column(Float)
-    floor = Column(Float)
+    tx_id: Mapped[int] = mapped_column(
+        BigInteger,
+        primary_key=True,
+        comment="거래 ID"
+    )
+    building_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("t_building.building_id", ondelete="CASCADE"),
+        nullable=False,
+        comment="건물 ID"
+    )
+    transaction_date: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    price: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    area_sqm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    floor: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
-    # 관계 설정
-    building = relationship("Building", back_populates="real_transactions")
+    # Relationships
+    building: Mapped["Building"] = relationship(back_populates="transactions")
+
+
+# =====================================================
+# 4. 안전 및 치안 정보
+# =====================================================
+
+class CrimeCCTV(Base):
+    __tablename__ = "t_crime_CCTV"
+
+    jcg_name: Mapped[str] = mapped_column(
+        String(100),
+        primary_key=True,
+        comment="자치구명"
+    )
+    crime_num: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    cctv_num: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    dangerous_rating: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    CCTV_security_rating: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+
+
+class PoliceStationInfo(Base):
+    __tablename__ = "t_police_station_info"
+
+    polic_station_name: Mapped[str] = mapped_column(
+        String(100),
+        primary_key=True,
+        comment="경찰서명"
+    )
+    address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    bjd_name: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+# =====================================================
+# 5. 교통 및 시설 정보
+# =====================================================
+
+class Station(Base):
+    __tablename__ = "t_station"
+
+    station_id: Mapped[int] = mapped_column(
+        BigInteger,
+        primary_key=True,
+        comment="역 ID"
+    )
+    line: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    station_name: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    lat: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    lon: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+
+class PublicTransportByAdminDong(Base):
+    __tablename__ = "t_public_transport_by_admin_dong"
+
+    hjd_id: Mapped[int] = mapped_column(
+        BigInteger,
+        primary_key=True,
+        comment="행정동 ID"
+    )
+    passenger_num: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    complexity_rating: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+
+
+class School(Base):
+    __tablename__ = "t_school"
+    __table_args__ = (
+        Index("idx_school_name", "school_name"),
+    )
+
+    school_id: Mapped[int] = mapped_column(
+        BigInteger,
+        primary_key=True,
+        autoincrement=True,
+        comment="학교 ID"
+    )
+    school_name: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    build_year: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    ja_chi_gu: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    school_level: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    category: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    lon: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    lat: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+
+class Park(Base):
+    __tablename__ = "t_park"
+
+    park_name: Mapped[str] = mapped_column(
+        String(200),
+        primary_key=True,
+        comment="공원명"
+    )
+    park_introduce: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    park_size: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    region: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    management: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    lon: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    lat: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+
+# =====================================================
+# 6. 환경 정보
+# =====================================================
+
+class Noise(Base):
+    __tablename__ = "t_noise"
+
+    noise_max: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    noise_avg: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    noise_min: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(Text, nullable=True, primary_key=True)
+    lat: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    lon: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
 
 class JcgBjdTable(Base):
     __tablename__ = "t_jcg_bjd_table"
 
-    region_name_full = Column(Text)
-    ja_chi_gu_code = Column(BigInteger, primary_key=True) # 복합키 중 하나라고 가정
-    bjd_code = Column(BigInteger, ForeignKey("t_bjd_table.bjd_code"), primary_key=True) # 복합키
+    region_name_full: Mapped[str] = mapped_column(
+        Text, 
+        primary_key=True,
+        comment="전체 지역명"
+    )
+    ja_chi_gu_code: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    bjd_code: Mapped[Optional[int]] = mapped_column(
+        BigInteger,
+        ForeignKey("t_bjd_table.bjd_code", ondelete="CASCADE"),
+        nullable=True,
+        comment="법정동 코드"
+    )
 
-    # 관계 설정
-    bjd = relationship("BjdTable", back_populates="jcg_mappings")
+    # Relationships
+    bjd: Mapped[Optional["BjdTable"]] = relationship(back_populates="jcg_mappings")
 
 
-# ------------------------------------------------------------------
-# 3. 기타 통계/정보 테이블 (관게가 명확치 않아 독립적으로 유지)
-# ------------------------------------------------------------------
+# =====================================================
+# 사용 예시
+# =====================================================
 
-class CrimeCCTV(Base):
-    __tablename__ = "t_crime_CCTV"
-    jcg_name = Column(Text, primary_key=True)
-    crime_num = Column(BigInteger)
-    cctv_num = Column(BigInteger)
-    dangerous_rating = Column(BigInteger)
-    CCTV_security_rating = Column(BigInteger)
+if __name__ == "__main__":
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
 
-class Noise(Base):
-    __tablename__ = "t_noise"
-    address = Column(Text, primary_key=True) # 임시 PK
-    noise_max = Column(BigInteger)
-    noise_avg = Column(BigInteger)
-    noise_min = Column(BigInteger)
-    lat = Column(Float)
-    lon = Column(Float)
-
-class Park(Base):
-    __tablename__ = "t_park"
-    park_name = Column(Text, primary_key=True)
-    park_introduce = Column(Text)
-    park_size = Column(Text)
-    region = Column(Text)
-    address = Column(Text)
-    management = Column(Text)
-    lon = Column(Float)
-    lat = Column(Float)
-
-class PoliceStationInfo(Base):
-    __tablename__ = "t_police_station_info"
-    polic_station_name = Column(Text, primary_key=True)
-    address = Column(Text)
-    bjd_name = Column(Text)
-
-class PublicTransportByAdminDong(Base):
-    __tablename__ = "t_public_transport_by_admin_dong"
-    hjd_id = Column(BigInteger, primary_key=True, index=True)
-    passenger_num = Column(BigInteger)
-    complexity_rating = Column(BigInteger)
-
-class School(Base):
-    __tablename__ = "t_school"
-    school_name = Column(Text, primary_key=True)
-    build_year = Column(BigInteger)
-    ja_chi_gu = Column(Text)
-    school_level = Column(Text)
-    category = Column(Text)
-    address = Column(Text)
-    lon = Column(Float)
-    lat = Column(Float)
-
-class Station(Base):
-    __tablename__ = "t_station"
-    station_id = Column(BigInteger, primary_key=True, index=True)
-    line = Column(BigInteger)
-    station_name = Column(Text)
-    lat = Column(Float)
-    lon = Column(Float)
+    # DB 연결 설정
+    DATABASE_URL = "mysql+pymysql://username:password@3.35.232.62:3306/areapulsedb"
+    
+    engine = create_engine(
+        DATABASE_URL,
+        echo=True,  # SQL 로그 출력
+        pool_pre_ping=True,  # 연결 체크
+    )
+    
+    # 세션 생성
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    
+    # 테이블 생성 (선택사항 - 이미 존재하는 DB이므로 불필요)
+    # Base.metadata.create_all(bind=engine)
+    
+    # 사용 예시
+    with SessionLocal() as session:
+        # 사용자 조회
+        user = session.query(User).filter(User.email == "test@example.com").first()
+        
+        # 건물 조회 (관계 포함)
+        building = session.query(Building).filter(Building.building_id == 123).first()
+        if building:
+            print(f"건물명: {building.building_name}")
+            print(f"리뷰 수: {len(building.reviews)}")
+            print(f"거래 내역 수: {len(building.transactions)}")
