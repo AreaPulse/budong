@@ -6,7 +6,6 @@ from BUDONG.api.models.models import (
     TRealTransactionPrice,
     TBuildingReview,
     TSchool,
-    TRegionStats,
     TStation,
     TNoise,
 )
