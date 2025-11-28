@@ -3,15 +3,17 @@ from .models import (
     TUser,
     TBuildingReview,
     TUserSavedBuilding,
+    TBjdTable,
     TBuilding,
     TRealTransactionPrice,
-    TSchool,
-    TSchoolDetail,
-    TParkDetail,
-    TRegion,
-    TRegionStats,
+    TCrimeCCTV,
+    TPoliceStationInfo,
     TStation,
+    TPublicTransportByAdminDong,
+    TSchool,
+    TPark,
     TNoise,
+    TJcgBjdTable
 )
 
 
