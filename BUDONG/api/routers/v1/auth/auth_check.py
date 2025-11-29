@@ -21,7 +21,6 @@ async def auth_check(
             user_id=current_user.user_id,
             email=current_user.email,
             nickname=current_user.nickname,
-            role=current_user.role,
             created_at=current_user.created_at
         )
     }

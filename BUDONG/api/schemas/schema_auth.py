@@ -41,7 +41,6 @@ class UserResponse(BaseModel):
     user_id: int = Field(..., description="사용자 ID")  
     email: str = Field(..., description="사용자 이메일")
     nickname: str = Field(..., description="사용자 닉네임")
-    role: str = Field(..., description="사용자 역할")
     created_at: datetime = Field(..., description="사용자 생성 일시")
     
     class Config:

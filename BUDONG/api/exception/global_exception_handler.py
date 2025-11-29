@@ -26,19 +26,15 @@ def register_exception_handlers(app):
                 }
             }
         )
+        
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request, exc):
+        import traceback
+        print("🔥 REAL ERROR BELOW 🔥")
+        traceback.print_exc()
 
-    @app.exception_handler(SQLAlchemyError)
-    async def database_exception_handler(request: Request, exc: SQLAlchemyError):
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={
-                "success": False,
-                "error": {
-                    "code": "DATABASE_ERROR",
-                    "message": "데이터베이스 오류가 발생했습니다."
-                }
-            }
-        )
+        raise exc  # 🔥 실제 오류 그대로 FastAPI가 출력하게 만들기
+
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):

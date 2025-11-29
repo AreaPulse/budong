@@ -4,7 +4,7 @@ from BUDONG.api.core.database import get_db
 from BUDONG.api.models.models import TUser
 from BUDONG.api.schemas.schema_auth import UserRegister, UserResponse
 from BUDONG.api.core.auth import get_password_hash
-from BUDONG.api.models.enums.user_role import UserRole
+#from BUDONG.api.models.enums.user_role import UserRole
 
 router = APIRouter()
 
@@ -38,7 +38,7 @@ async def register(
         email=user_data.email,
         password_hash=get_password_hash(user_data.password),
         nickname=user_data.nickname,
-        role=UserRole.USER.value
+        #role=UserRole.USER.value
     )
     
     db.add(new_user)
