@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Optional
 
 class InfrastructureCategoryRequest(BaseModel):
     category: str = Field(..., description="인프라 카테고리")
@@ -8,10 +9,10 @@ class InfrastructureCategoryRequest(BaseModel):
 
 
 class InfrastructureItem(BaseModel):
-    infra_id: int
+    infra_id: str
     infra_category: str
     name: str
-    address: str
+    address: Optional[str]
     latitude: float
     longitude: float
 

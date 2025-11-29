@@ -3,27 +3,24 @@ from sqlalchemy.orm import Session
 
 from BUDONG.api.core.database import get_db
 from BUDONG.api.exception.global_exception_handler import APIError
-from BUDONG.api.models.models import TSchool
+from BUDONG.api.models.models import (
+    TSchool,
+    TPark,
+    TStation,
+)
 from BUDONG.api.schemas.schema_infrastructure import (
     InfrastructureCategoryRequest,
     InfrastructureItem,
     InfrastructureResponse,
 )
-from BUDONG.util.geoutil import parse_wkt_point, haversine
+from BUDONG.util.geoutil import haversine
 
 router = APIRouter()
 
-# 허용된 카테고리 목록
 VALID_CATEGORIES = {
     "school",
     "park",
-    "subway_station",
-    "bus_stop",
-    "hospital",
-    "mart",
-    "bank",
-    "public_office",
-    "cctv",
+    "subway_station",   # subway + train 포함 가능
 }
 
 
@@ -37,7 +34,6 @@ def search_infrastructure_by_category(
     lon = payload.longitude
     radius = payload.radius_meters
 
-    # 1) 카테고리 검증
     if category not in VALID_CATEGORIES:
         raise APIError(
             code="INVALID_CATEGORY",
@@ -45,32 +41,71 @@ def search_infrastructure_by_category(
             status_code=400,
         )
 
-    # 2) DB에서 해당 카테고리 인프라 SELECT
-    infra_list = (
-        db.query(TSchool)
-        .filter(TSchool.infra_category == category)
-        .all()
-    )
-
-    if not infra_list:
-        return InfrastructureResponse(infrastructure=[])
-
-    # 3) 거리 기반 필터링 (haversine)
     result = []
-    for infra in infra_list:
-        i_lat, i_lon = parse_wkt_point(infra.location)
-        distance = haversine(lat, lon, i_lat, i_lon)
 
-        if distance <= radius:
-            result.append(
-                InfrastructureItem(
-                    infra_id=infra.infra_id,
-                    infra_category=infra.infra_category,
-                    name=infra.name,
-                    address=infra.address,
-                    latitude=i_lat,
-                    longitude=i_lon,
+    # ------------------------------------------------
+    # SCHOOL
+    # ------------------------------------------------
+    if category == "school":
+        items = db.query(TSchool).all()
+        for s in items:
+            if s is None:
+                continue
+            if s.lat is None or s.lon is None:
+                continue
+            dist = haversine(lat, lon, s.lat, s.lon)
+            if dist <= radius:
+                result.append(
+                    InfrastructureItem(
+                        infra_id=str(s.school_id),
+                        infra_category="school",
+                        name=s.school_name,
+                        address=s.address,
+                        latitude=s.lat,
+                        longitude=s.lon,
+                    )
                 )
-            )
+
+    # ------------------------------------------------
+    # PARK
+    # ------------------------------------------------
+    elif category == "park":
+        items = db.query(TPark).all()
+        for p in items:
+            if p.lat is None or p.lon is None:
+                continue
+            dist = haversine(lat, lon, p.lat, p.lon)
+            if dist <= radius:
+                result.append(
+                    InfrastructureItem(
+                        infra_id=p.park_name,
+                        infra_category="park",
+                        name=p.park_name,
+                        address=p.address,
+                        latitude=p.lat,
+                        longitude=p.lon,
+                    )
+                )
+
+    # ------------------------------------------------
+    # STATION (지하철역)
+    # ------------------------------------------------
+    elif category == "subway_station":
+        items = db.query(TStation).all()
+        for st in items:
+            if st.lat is None or st.lon is None:
+                continue
+            dist = haversine(lat, lon, st.lat, st.lon)
+            if dist <= radius:
+                result.append(
+                    InfrastructureItem(
+                        infra_id=str(st.station_id),
+                        infra_category="subway_station",
+                        name=st.station_name,
+                        address=None,
+                        latitude=st.lat,
+                        longitude=st.lon,
+                    )
+                )
 
     return InfrastructureResponse(infrastructure=result)
