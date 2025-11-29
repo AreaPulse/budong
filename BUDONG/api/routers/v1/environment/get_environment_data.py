@@ -1,75 +1,57 @@
-from fastapi import APIRouter, Query, Depends, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
 from BUDONG.api.core.database import get_db
-from BUDONG.api.models.models import (
-    TStation,
-    TNoise,
-)
-
+from BUDONG.api.models.models import TNoise
 from BUDONG.api.schemas.schema_environment import (
     EnvironmentDataItem,
     EnvironmentDataResponse,
 )
 
-from BUDONG.util.geoutil import parse_wkt_point, haversine
+from BUDONG.util.geoutil import haversine
 
 router = APIRouter()
 
 
 @router.get("/data", response_model=EnvironmentDataResponse)
 def get_environment_data(
-    latitude: float = Query(...),
-    longitude: float = Query(...),
-    db: Session = Depends(get_db)
+    latitude: float = Query(..., description="위도"),
+    longitude: float = Query(..., description="경도"),
+    db: Session = Depends(get_db),
 ):
-    """
-    특정 좌표 주변 관측소 데이터를 조회
-    """
+    # 모든 noise 지점 조회
+    noise_list = db.query(TNoise).all()
+    if not noise_list:
+        raise HTTPException(status_code=404, detail="환경 데이터가 없습니다.")
 
+    nearest_noise = None
+    min_dist = float("inf")
 
-    # 모든 측정소 목록 조회
-    stations = db.query(TStation).all()
-    if not stations:
-        raise HTTPException(status_code=404, detail="측정소 데이터가 없습니다.")
+    for n in noise_list:
+        if n is None:
+            continue
+        if n.lat is None or n.lon is None:
+            continue
 
-    # 입력 좌표와 가장 가까운 측정소 찾기
-    nearest_station = None
-    nearest_distance = float("inf")
+        dist = haversine(latitude, longitude, n.lat, n.lon)
+        if dist < min_dist:
+            min_dist = dist
+            nearest_noise = n
 
-    for st in stations:
-        st_lat, st_lon = parse_wkt_point(st.location)
-        dist = haversine(b_lat, b_lon, st_lat, st_lon)
+    if nearest_noise is None:
+        raise HTTPException(status_code=404, detail="가까운 소음 지점을 찾을 수 없습니다.")
 
-        if dist < nearest_distance:
-            nearest_distance = dist
-            nearest_station = st
-
-    if nearest_station is None:
-        raise HTTPException(status_code=404, detail="근처에 사용 가능한 측정소가 없습니다.")
-
-    # 해당 측정소의 환경 데이터 조회
-    env_list = (
-        db.query(TNoise)
-        .filter(TNoise.station_id == nearest_station.station_id)
-        .order_by(TNoise.measurement_time.desc())
-        .all()
+    item = EnvironmentDataItem(
+        address=nearest_noise.address,
+        noise_max=nearest_noise.noise_max,
+        noise_avg=nearest_noise.noise_avg,
+        noise_min=nearest_noise.noise_min,
+        latitude=nearest_noise.lat,
+        longitude=nearest_noise.lon,
     )
 
-    environment_data_schema = [
-        EnvironmentDataItem(
-            data_id=e.data_id,
-            station_id=e.station_id,
-            measurement_time=e.measurement_time,
-            pm10_value=e.pm10_value,
-            pm2_5_value=e.pm2_5_value,
-            noise_db=float(e.noise_db) if e.noise_db is not None else None,
-        )
-        for e in env_list
-    ]
-
     return EnvironmentDataResponse(
-        environment_data=environment_data_schema,
+        environment_data=[item],
         latitude=latitude,
         longitude=longitude,
     )

@@ -3,12 +3,12 @@ from typing import List, Optional
 from datetime import datetime
 
 class EnvironmentDataItem(BaseModel):
-    data_id: int
-    station_id: int
-    measurement_time: datetime
-    pm10_value: Optional[int] = None
-    pm2_5_value: Optional[int] = None
-    noise_db: Optional[float] = None
+    address: Optional[str]
+    noise_max: Optional[int]
+    noise_avg: Optional[int]
+    noise_min: Optional[int]
+    latitude: Optional[float]
+    longitude: Optional[float]
 
 
 class EnvironmentDataResponse(BaseModel):
