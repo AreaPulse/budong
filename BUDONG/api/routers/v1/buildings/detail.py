@@ -284,6 +284,8 @@ def get_building_detail(
     min_dist = float("inf")
 
     for n in noise_list:
+        if n is None:
+            continue
         if n.lat is None or n.lon is None:
             continue
 

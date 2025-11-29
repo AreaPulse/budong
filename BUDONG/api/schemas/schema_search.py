@@ -11,7 +11,7 @@ class SearchPointRequest(BaseModel):
 
 class SearchPointBuilding(BaseModel):
     building_id: int
-    bjd_code: str
+    bjd_code: Optional[int]
     address: Optional[str]
     building_name: Optional[str]
     building_type: Optional[str]
@@ -21,9 +21,8 @@ class SearchPointBuilding(BaseModel):
     longitude: float
 
 
-class SearchPoinTSchool(BaseModel):
-    infra_id: int
-    infra_category: str
+class SearchPointInfra(BaseModel):
+    type: str  # "school", "station", "park"
     name: Optional[str]
     address: Optional[str]
     latitude: float
@@ -33,6 +32,6 @@ class SearchPoinTSchool(BaseModel):
 # 응답 스키마
 class SearchPointResponse(BaseModel):
     buildings: List[SearchPointBuilding]
-    infrastructure: List[SearchPoinTSchool]
+    infrastructure: List[SearchPointInfra]
     search_radius: int
     result_count: int
