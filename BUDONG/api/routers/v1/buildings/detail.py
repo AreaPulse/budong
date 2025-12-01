@@ -268,7 +268,7 @@ def get_building_detail(
         "crime_num": crime.crime_num if crime else None,
         "cctv_num": crime.cctv_num if crime else None,
         "dangerous_rating": crime.dangerous_rating if crime else None,
-        # "cctv_security_rating": crime.CCTV_security_rating if crime else None,
+        "cctv_security_rating": crime.CCTV_security_rating if crime else None,
     }
 
 
