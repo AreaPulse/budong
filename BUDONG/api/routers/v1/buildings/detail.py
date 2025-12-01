@@ -145,7 +145,7 @@ def get_building_detail(
 
     station_list = db.query(TStation).filter(distance_expression <= INFRA_RADIUS_M).all()
     
-    for st in statoin_list:
+    for st in station_list:
         st_complexity = db.query(TPublicTransportByAdminDong).filter(TPublicTransportByAdminDong.station_id == st.station_id).first()
         ext = None
         if st_complexity != None:
