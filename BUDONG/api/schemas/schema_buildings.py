@@ -10,7 +10,7 @@ class BuildingRequest(BaseModel):
 
 
 # cctv output
-class zzzzzzzzzz(BaseModel):
+class cctv_info_detail(BaseModel):
     lon: float
     lat: float
 
@@ -104,5 +104,5 @@ class BuildingDetailResponse(BaseModel):
     nearby_infrastructure: List[NearbyInfrastructure]
     region_stats: List[RegionStat]
     environment_data: List[EnvironmentData]
-    real_cctv: List[zzzzzzzzzz]
+    real_cctv: List[cctv_info_detail]
 

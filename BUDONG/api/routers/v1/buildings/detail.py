@@ -28,7 +28,7 @@ from BUDONG.api.schemas.schema_buildings import (
     NearbyInfrastructure,
     RegionStat,
     EnvironmentData,
-    zzzzzzzzzz
+    cctv_info_detail
 )
 
 from BUDONG.util.geoutil import haversine
@@ -317,7 +317,7 @@ def get_building_detail(
         )
 
     cctv_data = [
-        zzzzzzzzzz(lon=cctv.lon, lat=cctv.lat)
+        cctv_info_detail(lon=cctv.lon, lat=cctv.lat)
         for cctv in cctv_list
     ]
     # ------------------------------------------------------------------
