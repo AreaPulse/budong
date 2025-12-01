@@ -160,6 +160,10 @@ def get_building_detail(
 
         dist = haversine(b_lat, b_lon, st.lat, st.lon)
         if dist <= INFRA_RADIUS_M:
+            st_complexity = db.query(TPublicTransportByAdminDong)
+            .filter(TPublicTransportByAdminDong.station_id == st.station_id)
+            .first()
+            
             infra_schema.append(
                 NearbyInfrastructure(
                     infra_id=str(st.station_id),
@@ -168,6 +172,10 @@ def get_building_detail(
                     address=None,
                     latitude=st.lat,
                     longitude=st.lon,
+                    extra_data={
+                        "passenger_num":st_complexity.passenger_num * 80, # 80으로 나눠진 평균값이므로 실 인원수는 80
+                        "complexity_rating":st_complexity.complexity_rating
+                    }
                 )
             )
 
@@ -244,20 +252,6 @@ def get_building_detail(
         "cctv_security_rating": crime.CCTV_security_rating if crime else None,
     }
 
-    # 대중교통 복잡도
-    hjd_id = None
-    transport = None
-
-    # jcg_bjd_table = db.query(TJcgBjdTable).filter(TJcgBjdTable.region_name_full == jcg_name).first()
-
-    # if building.bjd_code:
-    #     hjd_id = (building.bjd_code // 100) * 100  # 법정동코드 → 행정동코드 변환
-
-    #     transport = (
-    #         db.query(TPublicTransportByAdminDong)
-    #         .filter(TPublicTransportByAdminDong.hjd_id == hjd_id)
-    #         .first()
-    #     )
 
     region_stats.append(
         RegionStat(

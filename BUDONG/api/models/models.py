@@ -289,10 +289,10 @@ class TStation(Base):
 class TPublicTransportByAdminDong(Base):
     __tablename__ = "t_public_transport_by_admin_dong"
 
-    hjd_id: Mapped[int] = mapped_column(
+    station_id: Mapped[int] = mapped_column(
         BigInteger,
         primary_key=True,
-        comment="행정동 ID"
+        comment="지하철 ID"
     )
     passenger_num: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     complexity_rating: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
