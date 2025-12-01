@@ -161,7 +161,13 @@ def get_building_detail(
         dist = haversine(b_lat, b_lon, st.lat, st.lon)
         if dist <= INFRA_RADIUS_M:
             st_complexity = db.query(TPublicTransportByAdminDong).filter(TPublicTransportByAdminDong.station_id == st.station_id).first()
-            
+            ext = None
+            if st_complexity not None:
+                ext = {
+                    "passenger_num":st_complexity.passenger_num * 80, # 80으로 나눠진 평균값이므로 실 인원수는 80
+                    "complexity_rating":st_complexity.complexity_rating
+                }
+
             infra_schema.append(
                 NearbyInfrastructure(
                     infra_id=str(st.station_id),
@@ -170,10 +176,7 @@ def get_building_detail(
                     address=None,
                     latitude=st.lat,
                     longitude=st.lon,
-                    extra_data={
-                        "passenger_num":st_complexity.passenger_num * 80, # 80으로 나눠진 평균값이므로 실 인원수는 80
-                        "complexity_rating":st_complexity.complexity_rating
-                    }
+                    extra_data=ext
                 )
             )
 
