@@ -249,14 +249,14 @@ def get_building_detail(
     
     # cctv
     print(b_lon, b_lat)
-    radius_m = 1000
+    radius_m = 500
     distance_expression = func.ST_Distance_Sphere(
         func.Point(TCCTVInfo.lon, TCCTVInfo.lat),  
         func.Point(b_lon, b_lat)
     )
 
     # 3. 쿼리 작성: 거리가 radius_m 이하인 항목의 cnt 합계를 구합니다.
-    cctv_list = db.query(TCCTVINFO).filter(distance_expression <= radius_m)
+    cctv_list = db.query(TCCTVInfo).filter(distance_expression <= radius_m)
 
     # total_cnt = int(total_count) if total_count is not None else 0
     # print(total_cnt)
