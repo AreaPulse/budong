@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-
+from BUDONG.api.core.auth import get_current_active_user
 from BUDONG.api.core.database import get_db
 from BUDONG.api.models.models import (
     TBjdTable,
@@ -23,7 +23,8 @@ router = APIRouter()
 @router.get("/stats", response_model=RegionStatsResponse)
 def get_region_stats(
     bjd_code: int = Query(..., description="법정동 코드"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user)   
 ):
 
     # -----------------------------------------------------------

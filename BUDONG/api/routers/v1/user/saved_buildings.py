@@ -10,7 +10,7 @@ router = APIRouter()
 @router.get("/saved-buildings", response_model=SavedBuildingsResponse)
 def get_saved_buildings(
     db: Session = Depends(get_db),
-    current_user: TUser = Depends(get_current_active_user)  
+    current_user = Depends(get_current_active_user)
 ):
     saved_buildings = (
         db.query(TUserSavedBuilding)

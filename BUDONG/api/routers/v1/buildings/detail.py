@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-
+from BUDONG.api.core.auth import get_current_active_user
 from BUDONG.api.core.database import get_db
 from BUDONG.api.models import (
     TBuilding,
@@ -39,7 +39,8 @@ router = APIRouter()
 @router.post("/detail", response_model=BuildingDetailResponse)
 def get_building_detail(
     payload: BuildingRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user),
 ):
 
     # ------------------------------------------------------------------

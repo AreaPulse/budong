@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
+from BUDONG.api.core.auth import get_current_active_user
 from BUDONG.api.core.database import get_db
 from BUDONG.api.schemas.schema_reviews import ReviewFetchRequest, ReviewListResponse
 from BUDONG.api.models.models import TBuildingReview
@@ -10,7 +10,7 @@ from BUDONG.api.models.models import TBuildingReview
 router = APIRouter()  # ← THIS MUST EXIST
 
 @router.post("/reviews", response_model=ReviewListResponse)
-def get_reviews_by_building(request: ReviewFetchRequest, db: Session = Depends(get_db)):
+def get_reviews_by_building(request: ReviewFetchRequest, db: Session = Depends(get_db), current_user = Depends(get_current_active_user)):
     # 1) Fetch reviews
     reviews = db.query(TBuildingReview).filter(
         TBuildingReview.building_id == request.building_id

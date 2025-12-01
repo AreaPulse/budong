@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
-
+from BUDONG.api.core.auth import get_current_active_user
 from BUDONG.api.core.database import get_db
 from BUDONG.api.models.models import TNoise
 from BUDONG.api.schemas.schema_environment import (
@@ -18,6 +18,7 @@ def get_environment_data(
     latitude: float = Query(..., description="위도"),
     longitude: float = Query(..., description="경도"),
     db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user),
 ):
     # 모든 noise 지점 조회
     noise_list = db.query(TNoise).all()

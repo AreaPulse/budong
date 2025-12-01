@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-
+from BUDONG.api.core.auth import get_current_active_user
 from BUDONG.api.core.database import get_db
 from BUDONG.api.exception.global_exception_handler import APIError
 from BUDONG.api.models.models import (
@@ -27,6 +27,7 @@ VALID_CATEGORIES = {
 @router.post("/category", response_model=InfrastructureResponse)
 def search_infrastructure_by_category(
     payload: InfrastructureCategoryRequest,
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     category = payload.category

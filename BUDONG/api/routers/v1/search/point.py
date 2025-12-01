@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from BUDONG.api.core.auth import get_current_active_user
 
 from BUDONG.api.core.database import get_db
 from BUDONG.api.models.models import (
@@ -20,7 +21,8 @@ router = APIRouter()
 @router.post("/point", response_model=SearchPointResponse)
 def search_point(
     payload: SearchPointRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user)
 ):
 
     lat = payload.latitude
