@@ -9,6 +9,11 @@ class BuildingRequest(BaseModel):
     building_id: int = Field(..., description="빌딩id")
 
 
+# cctv output
+class zzzzzzzzzz(BaseModel):
+    lon: float
+    lat: float
+
 # -------------------------
 # Building 기본 정보
 # -------------------------
@@ -73,7 +78,6 @@ class RegionStat(BaseModel):
     cctv_num: Optional[int]
     dangerous_rating: Optional[int]
     cctv_security_rating: Optional[int]
-    real_cctv: Optional[List] = None
 
     
 
@@ -100,3 +104,5 @@ class BuildingDetailResponse(BaseModel):
     nearby_infrastructure: List[NearbyInfrastructure]
     region_stats: List[RegionStat]
     environment_data: List[EnvironmentData]
+    real_cctv: List[zzzzzzzzzz]
+
