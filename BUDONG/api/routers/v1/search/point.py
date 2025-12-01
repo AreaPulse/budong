@@ -28,7 +28,7 @@ def search_point(
     radius = payload.radius_meters
 
     distance_expression = func.ST_Distance_Sphere(
-        func.Point(TBuilding.lat, TBuilding.lon),  
+        func.Point(TBuilding.lon, TBuilding.lat),  
         func.Point(lon, lat)
     )
 
