@@ -73,7 +73,7 @@ class RegionStat(BaseModel):
     cctv_num: Optional[int]
     dangerous_rating: Optional[int]
     cctv_security_rating: Optional[int]
-    real_cctv: Optional[dict] = None
+    real_cctv: Optional[List] = None
 
     
 
