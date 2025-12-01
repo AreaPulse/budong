@@ -211,6 +211,13 @@ def get_building_detail(
     # 3. 쿼리 작성: 거리가 radius_m 이하인 항목의 cnt 합계를 구합니다.
     cctv_list: List[TCCTVInfo] = db.query(TCCTVInfo).filter(distance_expression <= radius_m).all()
 
+    total_count = db.query(
+        func.sum(TCCTVInfo.cnt)
+    ).filter(
+        distance_expression <= radius_m
+    ).scalar() 
+
+    total_cnt = int(total_count) if total_count is not None else 0
     # total_cnt = int(total_count) if total_count is not None else 0
     # print(total_cnt)
 
@@ -229,7 +236,7 @@ def get_building_detail(
         RegionStat(
             region_name=region_name,
             crime_num=crime_stat["crime_num"],
-            cctv_num=crime_stat["cctv_num"],
+            cctv_num=total_cnt,
             dangerous_rating=crime_stat["dangerous_rating"],
             cctv_security_rating=crime_stat["cctv_security_rating"],
         )
