@@ -264,7 +264,7 @@ def get_building_detail(
             )
         )
 
-    infra_schema += school_result + park_result + station_list
+    infra_schema += school_result + park_result + station_result
 
     cctv_data = [
         cctv_info_detail(lon=cctv.lon, lat=cctv.lat)
