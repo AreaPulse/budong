@@ -168,7 +168,7 @@ def get_building_detail(
             ext = None
             if st_complexity != None:
                 ext = {
-                    "passenger_num":st_complexity.passenger_num * 80, # 80으로 나눠진 평균값이므로 실 인원수는 80
+                    "passenger_num":st_complexity.passenger_num,
                     "complexity_rating":st_complexity.complexity_rating,
                     "line":st.line
                 }
