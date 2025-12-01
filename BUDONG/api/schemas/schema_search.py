@@ -32,6 +32,4 @@ class SearchPointInfra(BaseModel):
 # 응답 스키마
 class SearchPointResponse(BaseModel):
     buildings: List[SearchPointBuilding]
-    infrastructure: List[SearchPointInfra]
-    search_radius: int
     result_count: int
