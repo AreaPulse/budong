@@ -145,7 +145,7 @@ def get_building_detail(
     )
 
     station_list = db.query(TStation).filter(distance_expression <= INFRA_RADIUS_M).all()
-    
+    station_result = []
     for st in station_list:
         st_complexity = db.query(TPublicTransportByAdminDong).filter(TPublicTransportByAdminDong.station_id == st.station_id).first()
         ext = None
@@ -156,7 +156,7 @@ def get_building_detail(
                 "line":st.line
             }
             
-            infra_schema.append(
+            station_result.append(
                 NearbyInfrastructure(
                     infra_id=str(st.station_id),
                     infra_category="subway_station",
@@ -263,6 +263,8 @@ def get_building_detail(
                 longitude=near_noise.lon,
             )
         )
+
+    infra_schema += school_result + park_result + station_list
 
     cctv_data = [
         cctv_info_detail(lon=cctv.lon, lat=cctv.lat)
