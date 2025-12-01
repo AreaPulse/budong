@@ -121,7 +121,7 @@ def get_building_detail(
     # school
     distance_expression = func.ST_Distance_Sphere(
         func.Point(TSchool.lon, TSchool.lat),  
-        func.Point(lon, lat)
+        func.Point(b_lon, b_lat)
     )
 
     school_list = db.query(TSchool).filter(distance_expression <= radius).all()
@@ -140,7 +140,7 @@ def get_building_detail(
     # subway
     distance_expression = func.ST_Distance_Sphere(
         func.Point(TStation.lon, TStation.lat),  
-        func.Point(lon, lat)
+        func.Point(b_lon, b_lat)
     )
 
     station_list = db.query(TStation).filter(distance_expression <= radius).all()
@@ -170,7 +170,7 @@ def get_building_detail(
     # park
     distance_expression = func.ST_Distance_Sphere(
         func.Point(TPark.lon, TPark.lat),  
-        func.Point(lon, lat)
+        func.Point(b_lon, b_lat)
     )
 
     park_list = db.query(TPark).filter(distance_expression <= radius).all()
@@ -239,33 +239,23 @@ def get_building_detail(
     # ------------------------------------------------------------------
     # 8. 환경 데이터 (가장 가까운 noise 지점 1개)
     # ------------------------------------------------------------------
-    noise_list = db.query(TNoise).all()
-
-    nearest_noise = None
-    min_dist = float("inf")
-
-    for n in noise_list:
-        if n is None:
-            continue
-        if n.lat is None or n.lon is None:
-            continue
-
-        dist = haversine(b_lat, b_lon, n.lat, n.lon)
-        if dist < min_dist:
-            min_dist = dist
-            nearest_noise = n
-
     environment_schema = []
 
-    if nearest_noise:
+    distance_expression = func.ST_Distance_Sphere(
+        func.Point(TNoise.lon, TPTNoiseark.lat),  
+        func.Point(b_lon, b_lat)
+    )
+
+    near_noise = db.query(TNoise).filter(distance_expression <= radius).order_by(distance_expression.asc()).limit(1).first()
+    if near_noise:
         environment_schema.append(
             EnvironmentData(
-                address=nearest_noise.address,
-                noise_max=nearest_noise.noise_max,
-                noise_avg=nearest_noise.noise_avg,
-                noise_min=nearest_noise.noise_min,
-                latitude=nearest_noise.lat,
-                longitude=nearest_noise.lon,
+                address=near_noise.address,
+                noise_max=near_noise.noise_max,
+                noise_avg=near_noise.noise_avg,
+                noise_min=near_noise.noise_min,
+                latitude=near_noise.lat,
+                longitude=near_noise.lon,
             )
         )
 
