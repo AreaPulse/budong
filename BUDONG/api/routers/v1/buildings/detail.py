@@ -169,7 +169,8 @@ def get_building_detail(
             if st_complexity != None:
                 ext = {
                     "passenger_num":st_complexity.passenger_num * 80, # 80으로 나눠진 평균값이므로 실 인원수는 80
-                    "complexity_rating":st_complexity.complexity_rating
+                    "complexity_rating":st_complexity.complexity_rating,
+                    "line":st.line
                 }
 
             infra_schema.append(
