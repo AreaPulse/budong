@@ -160,9 +160,7 @@ def get_building_detail(
 
         dist = haversine(b_lat, b_lon, st.lat, st.lon)
         if dist <= INFRA_RADIUS_M:
-            st_complexity = db.query(TPublicTransportByAdminDong)
-            .filter(TPublicTransportByAdminDong.station_id == st.station_id)
-            .first()
+            st_complexity = db.query(TPublicTransportByAdminDong).filter(TPublicTransportByAdminDong.station_id == st.station_id).first()
             
             infra_schema.append(
                 NearbyInfrastructure(
