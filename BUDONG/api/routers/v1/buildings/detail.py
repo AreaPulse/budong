@@ -16,6 +16,7 @@ from BUDONG.api.models import (
     TBjdTable,
     TJcgBjdTable,
     TNoise,
+    TCCTVInfo
 )
 
 from BUDONG.api.schemas.schema_buildings import (
