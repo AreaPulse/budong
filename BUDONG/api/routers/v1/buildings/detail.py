@@ -85,7 +85,7 @@ def get_building_detail(
             floor=tx.floor,
         )
         for tx in tx_list
-    ]
+    ][:10]
 
     # ------------------------------------------------------------------
     # 3. 리뷰 정보
@@ -174,68 +174,62 @@ def get_building_detail(
     # ------------------------------------------------------------------
     # 5. 경찰서 정보 (법정동 → bjd_name 기반)
     # ------------------------------------------------------------------
-    police = None
+    # police = None
 
-    if building.bjd_code:
-        bjd = db.query(TBjdTable).filter(TBjdTable.bjd_code == building.bjd_code).first()
+    # if building.bjd_code:
+    #     bjd = db.query(TBjdTable).filter(TBjdTable.bjd_code == building.bjd_code).first()
 
-        if bjd and bjd.bjd_name:
-            police = (
-                db.query(TPoliceStationInfo)
-                .filter(TPoliceStationInfo.bjd_name == bjd.bjd_name)
-                .first()
-            )
+    #     if bjd and bjd.bjd_name:
+    #         police = (
+    #             db.query(TPoliceStationInfo)
+    #             .filter(TPoliceStationInfo.bjd_name == bjd.bjd_name)
+    #             .first()
+    #         )
 
-    if police:
-        infra_schema.append(
-            NearbyInfrastructure(
-                infra_id=police.polic_station_name,
-                infra_category="public_office",
-                name=police.polic_station_name,
-                address=police.address,
-                latitude=None,
-                longitude=None,
-            )
-        )
+    # if police:
+    #     infra_schema.append(
+    #         NearbyInfrastructure(
+    #             infra_id=police.polic_station_name,
+    #             infra_category="public_office",
+    #             name=police.polic_station_name,
+    #             address=police.address,
+    #             latitude=None,
+    #             longitude=None,
+    #         )
+    #     )
 
     # ------------------------------------------------------------------
     # 6. 범죄/CCTV 정보 (자치구)
     # ------------------------------------------------------------------
     crime = None
     region_name = None
+    jcg_name = building.address.split(' ')[0]
+    region_name = jcg_name
+    print()
 
-    if building.bjd_code:
-        jcg = (
-            db.query(TJcgBjdTable)
-            .filter(TJcgBjdTable.bjd_code == building.bjd_code)
-            .first()
-        )
+    crime = (
+        db.query(TCrimeCCTV)
+        .filter(TCrimeCCTV.jcg_name == region_name)
+        .first()
+    )
 
-        if jcg:
-            region_name = jcg.region_name_full
-            crime = (
-                db.query(TCrimeCCTV)
-                .filter(TCrimeCCTV.jcg_name == region_name)
-                .first()
+    if crime:
+        infra_schema.append(
+            NearbyInfrastructure(
+                infra_id=crime.jcg_name,
+                infra_category="cctv",
+                name=crime.jcg_name,
+                address=None,
+                latitude=None,
+                longitude=None,
+                extra_data={
+                    "crime_num": crime.crime_num,
+                    "cctv_num": crime.cctv_num,
+                    "dangerous_rating": crime.dangerous_rating,
+                    "cctv_security_rating": crime.CCTV_security_rating,
+                }
             )
-
-            if crime:
-                infra_schema.append(
-                    NearbyInfrastructure(
-                        infra_id=crime.jcg_name,
-                        infra_category="cctv",
-                        name=crime.jcg_name,
-                        address=None,
-                        latitude=None,
-                        longitude=None,
-                        extra_data={
-                            "crime_num": crime.crime_num,
-                            "cctv_num": crime.cctv_num,
-                            "dangerous_rating": crime.dangerous_rating,
-                            "cctv_security_rating": crime.CCTV_security_rating,
-                        }
-                    )
-                )
+        )
 
     # ------------------------------------------------------------------
     # 7. 지역 통계 (범죄지표 + 복잡도)
@@ -254,26 +248,28 @@ def get_building_detail(
     hjd_id = None
     transport = None
 
-    if building.bjd_code:
-        hjd_id = (building.bjd_code // 100) * 100  # 법정동코드 → 행정동코드 변환
+    # jcg_bjd_table = db.query(TJcgBjdTable).filter(TJcgBjdTable.region_name_full == jcg_name).first()
 
-        transport = (
-            db.query(TPublicTransportByAdminDong)
-            .filter(TPublicTransportByAdminDong.hjd_id == hjd_id)
-            .first()
-        )
+    # if building.bjd_code:
+    #     hjd_id = (building.bjd_code // 100) * 100  # 법정동코드 → 행정동코드 변환
 
-    region_stats.append(
-        RegionStat(
-            region_name=region_name,
-            crime_num=crime_stat["crime_num"],
-            cctv_num=crime_stat["cctv_num"],
-            dangerous_rating=crime_stat["dangerous_rating"],
-            cctv_security_rating=crime_stat["cctv_security_rating"],
-            passenger_num=transport.passenger_num if transport else None,
-            complexity_rating=transport.complexity_rating if transport else None,
-        )
-    )
+    #     transport = (
+    #         db.query(TPublicTransportByAdminDong)
+    #         .filter(TPublicTransportByAdminDong.hjd_id == hjd_id)
+    #         .first()
+    #     )
+
+    # region_stats.append(
+    #     RegionStat(
+    #         region_name=region_name,
+    #         crime_num=crime_stat["crime_num"],
+    #         cctv_num=crime_stat["cctv_num"],
+    #         dangerous_rating=crime_stat["dangerous_rating"],
+    #         cctv_security_rating=crime_stat["cctv_security_rating"],
+    #         passenger_num=transport.passenger_num if transport else None,
+    #         complexity_rating=transport.complexity_rating if transport else None,
+    #     )
+    # )
 
     # ------------------------------------------------------------------
     # 8. 환경 데이터 (가장 가까운 noise 지점 1개)
