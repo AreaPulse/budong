@@ -32,7 +32,6 @@ def search_point(
         func.Point(lon, lat)
     )
 
-    # 3. 쿼리 작성: 거리가 radius_m 이하인 항목의 cnt 합계를 구합니다.
     building_list = db.query(TBuilding).filter(distance_expression <= radius).all()
 
     result_buildings = [
@@ -53,62 +52,64 @@ def search_point(
     # ================================
     # 2. 인프라 조회 (학교 + 역 + 공원)
     # ================================
-    infra_results = []
 
     # --- 학교 ---
-    schools = db.query(TSchool).all()
-    for s in schools:
-        if s.lat is None or s.lon is None:
-            continue
 
-        dist = haversine(lat, lon, s.lat, s.lon)
-        if dist <= radius:
-            infra_results.append(
-                SearchPointInfra(
-                    type="school",
-                    name=s.school_name,
-                    address=s.address,
-                    latitude=s.lat,
-                    longitude=s.lon
-                )
-            )
+    distance_expression = func.ST_Distance_Sphere(
+        func.Point(TSchool.lon, TSchool.lat),  
+        func.Point(lon, lat)
+    )
+
+    school_list = db.query(TSchool).filter(distance_expression <= radius).all()
+    school_result = [
+        SearchPointInfra(
+            type="school",
+            name=s.school_name,
+            address=s.address,
+            latitude=s.lat,
+            longitude=s.lon
+        )
+        for s in school_list
+    ]
 
     # --- 지하철역 ---
-    stations = db.query(TStation).all()
-    for st in stations:
-        if st.lat is None or st.lon is None:
-            continue
+    distance_expression = func.ST_Distance_Sphere(
+        func.Point(TStation.lon, TStation.lat),  
+        func.Point(lon, lat)
+    )
 
-        dist = haversine(lat, lon, st.lat, st.lon)
-        if dist <= radius:
-            infra_results.append(
-                SearchPointInfra(
+    station_list = db.query(TStation).filter(distance_expression <= radius).all()
+    station_result = [
+        SearchPointInfra(
                     type="subway_station",
                     name=st.station_name,
                     address=None,
                     latitude=st.lat,
                     longitude=st.lon
-                )
-            )
+        )
+        for st in station_list
+    ]
 
-    # --- 공원 ---
-    parks = db.query(TPark).all()
-    for p in parks:
-        if p.lat is None or p.lon is None:
-            continue
+    distance_expression = func.ST_Distance_Sphere(
+        func.Point(TPark.lon, TPark.lat),  
+        func.Point(lon, lat)
+    )
 
-        dist = haversine(lat, lon, p.lat, p.lon)
-        if dist <= radius:
-            infra_results.append(
-                SearchPointInfra(
-                    type="park",
-                    name=p.park_name,
-                    address=p.address,
-                    latitude=p.lat,
-                    longitude=p.lon
-                )
-            )
+    # park
+    park_list = db.query(TPark).filter(distance_expression <= radius).all()
+    park_result = [
+        SearchPointInfra(
+            type="park",
+            name=p.park_name,
+            address=p.address,
+            latitude=p.lat,
+            longitude=p.lon
+        )
+        for p in park_list
+    ]
+    
 
+    infra_results = school_result + park_result + station_result
     return SearchPointResponse(
         buildings=result_buildings,
         infrastructure=infra_results,

@@ -118,61 +118,43 @@ def get_building_detail(
     INFRA_RADIUS_M = 1000
     infra_schema = []
 
-    # ------ 학교 ------
-    schools = db.query(TSchool).all()
-    for s in schools:
-        if s.lat is None or s.lon is None:
-            continue
+    # school
+    distance_expression = func.ST_Distance_Sphere(
+        func.Point(TSchool.lon, TSchool.lat),  
+        func.Point(lon, lat)
+    )
 
-        dist = haversine(b_lat, b_lon, s.lat, s.lon)
-        if dist <= INFRA_RADIUS_M:
-            infra_schema.append(
-                NearbyInfrastructure(
-                    infra_id=str(s.school_id),
-                    infra_category="school",
-                    name=s.school_name,
-                    address=s.address,
-                    latitude=s.lat,
-                    longitude=s.lon,
-                )
-            )
+    school_list = db.query(TSchool).filter(distance_expression <= radius).all()
+    school_result = [
+        NearbyInfrastructure(
+            infra_id=str(s.school_id),
+            infra_category="school",
+            name=s.school_name,
+            address=s.address,
+            latitude=s.lat,
+            longitude=s.lon,
+        )
+        for s in school_list
+    ]
 
-    # ------ 공원 ------
-    parks = db.query(TPark).all()
-    for p in parks:
-        if p.lat is None or p.lon is None:
-            continue
+    # subway
+    distance_expression = func.ST_Distance_Sphere(
+        func.Point(TStation.lon, TStation.lat),  
+        func.Point(lon, lat)
+    )
 
-        dist = haversine(b_lat, b_lon, p.lat, p.lon)
-        if dist <= INFRA_RADIUS_M:
-            infra_schema.append(
-                NearbyInfrastructure(
-                    infra_id=p.park_name,
-                    infra_category="park",
-                    name=p.park_name,
-                    address=p.address,
-                    latitude=p.lat,
-                    longitude=p.lon,
-                )
-            )
-
-    # ------ 지하철역 ------
-    stations = db.query(TStation).all()
-    for st in stations:
-        if st.lat is None or st.lon is None:
-            continue
-
-        dist = haversine(b_lat, b_lon, st.lat, st.lon)
-        if dist <= INFRA_RADIUS_M:
-            st_complexity = db.query(TPublicTransportByAdminDong).filter(TPublicTransportByAdminDong.station_id == st.station_id).first()
-            ext = None
-            if st_complexity != None:
-                ext = {
-                    "passenger_num":st_complexity.passenger_num,
-                    "complexity_rating":st_complexity.complexity_rating,
-                    "line":st.line
-                }
-
+    station_list = db.query(TStation).filter(distance_expression <= radius).all()
+    
+    for st in statoin_list:
+        st_complexity = db.query(TPublicTransportByAdminDong).filter(TPublicTransportByAdminDong.station_id == st.station_id).first()
+        ext = None
+        if st_complexity != None:
+            ext = {
+                "passenger_num":st_complexity.passenger_num,
+                "complexity_rating":st_complexity.complexity_rating,
+                "line":st.line
+            }
+            
             infra_schema.append(
                 NearbyInfrastructure(
                     infra_id=str(st.station_id),
@@ -185,32 +167,24 @@ def get_building_detail(
                 )
             )
 
-    # ------------------------------------------------------------------
-    # 5. 경찰서 정보 (법정동 → bjd_name 기반)
-    # ------------------------------------------------------------------
-    # police = None
+    # park
+    distance_expression = func.ST_Distance_Sphere(
+        func.Point(TPark.lon, TPark.lat),  
+        func.Point(lon, lat)
+    )
 
-    # if building.bjd_code:
-    #     bjd = db.query(TBjdTable).filter(TBjdTable.bjd_code == building.bjd_code).first()
-
-    #     if bjd and bjd.bjd_name:
-    #         police = (
-    #             db.query(TPoliceStationInfo)
-    #             .filter(TPoliceStationInfo.bjd_name == bjd.bjd_name)
-    #             .first()
-    #         )
-
-    # if police:
-    #     infra_schema.append(
-    #         NearbyInfrastructure(
-    #             infra_id=police.polic_station_name,
-    #             infra_category="public_office",
-    #             name=police.polic_station_name,
-    #             address=police.address,
-    #             latitude=None,
-    #             longitude=None,
-    #         )
-    #     )
+    park_list = db.query(TPark).filter(distance_expression <= radius).all()
+    park_result = [
+        NearbyInfrastructure(
+            infra_id=p.park_name,
+            infra_category="park",
+            name=p.park_name,
+            address=p.address,
+            latitude=p.lat,
+            longitude=p.lon,
+        )
+        for p in park_list
+    ]
 
     # ------------------------------------------------------------------
     # 6. 범죄/CCTV 정보 (자치구)
@@ -226,28 +200,6 @@ def get_building_detail(
         .filter(TCrimeCCTV.jcg_name == region_name)
         .first()
     )
-
-    # if crime:
-    #     infra_schema.append(
-    #         NearbyInfrastructure(
-    #             infra_id=crime.jcg_name,
-    #             infra_category="cctv",
-    #             name=crime.jcg_name,
-    #             address=None,
-    #             latitude=None,
-    #             longitude=None,
-    #             extra_data={
-    #                 "crime_num": crime.crime_num,
-    #                 "cctv_num": crime.cctv_num,
-    #                 "dangerous_rating": crime.dangerous_rating,
-    #                 "cctv_security_rating": crime.CCTV_security_rating,
-    #             }
-    #         )
-    #     )
-
-    # ------------------------------------------------------------------
-    # 7. 지역 통계 (범죄지표 + 복잡도)
-    # ------------------------------------------------------------------
     
     # cctv
     radius_m = 500
