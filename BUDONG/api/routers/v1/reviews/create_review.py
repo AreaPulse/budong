@@ -27,4 +27,7 @@ def create_review(
     db.commit()
     db.refresh(new_review)
 
-    return ReviewResponse(**new_review.__dict__)
+    return ReviewResponse(
+        success=True,
+        review_id=new_review.review_id
+        message="Review created successfully")
